@@ -10,11 +10,14 @@ WORK = 'Moby Dick'
 
 FREQ_ALPH = 'qjxzwkvfybhmpgudclotnrsaie'
 
+def normalize_text(text):
+    return ''.join([l for l in text.lower() if l.isalpha()])
+
 class Passage():
     def __init__(self, text):
         self.text = text
-        self.prepared = ''.join([l for l in text.lower() if l.isalpha()])
-        self.count = Counter(self.prepared)
+        self.normalized_text = normalize_text(self.text)
+        self.count = Counter(self.normalized_text)
 
         self.display = self.text
 
@@ -43,8 +46,8 @@ class Passage():
 def main():
     p = Passage(QUOTE)
 
-    author = ''.join([l for l in AUTHOR.lower() if l.isalpha()])
-    work = ''.join([l for l in WORK.lower() if l.isalpha()])
+    author = normalize_text(AUTHOR)
+    work = normalize_text(WORK)
 
     if not (p.is_substring(author) and p.is_substring(work)):
         sys.exit('Passage does not contain anagrams for {} and {}.'.format(author, work))
@@ -64,11 +67,10 @@ def main():
 
     subs = []
 
-    print('Finding an acrostic for the passage:', end='\n\n')
-
-    print(p.display, end='\n\n')
-
-    print('from {} by {}.'.format(WORK, AUTHOR), end='\n\n')
+    if DISPLAY:
+        print('Finding an acrostic for the passage:', end='\n\n')
+        print(p.display, end='\n\n')
+        print('from {} by {}.'.format(WORK, AUTHOR), end='\n\n')
 
     for sub in possible_subs:
         if p.is_substring(sub):
@@ -76,16 +78,39 @@ def main():
             subs.append(sub)
         else:
             pass
-            # print(sub, 'is not a substring')
+            # #print(sub, 'is not a substring')
 
-    print('You may remove the anagrammed substrings:', end='\n\n')
-    print(subs, end='\n\n')
+    remaining = normalize_text(p.display)
 
-    remaining = ''.join([l for l in p.display if l.isalpha()])
+    if DISPLAY:
+        print('You may remove the anagrammed substrings:', end='\n\n')
+        print(subs, end='\n\n')
+        print('With {} letters remaining:'.format(len(remaining)), end='\n\n')
+        print(remaining)
 
-    print('With {} letters remaining:'.format(len(remaining)), end='\n\n')
-    print(remaining)
+    return remaining, subs
 
 if __name__ == '__main__':
-    main()
+    flags = sys.argv[1:]
 
+    RUN = False
+    DISPLAY = True
+
+    if '--run' in flags:
+        RUN = True
+
+    if '-q' in flags:
+        DISPLAY = False
+
+    if RUN:
+        remaining = 1
+        attempts = 1
+        while remaining:
+            remaining, subs = main()
+            print(attempts, len(remaining), remaining)
+            attempts += 1
+
+        print(subs)
+
+    else:
+        main()
