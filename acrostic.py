@@ -1,14 +1,38 @@
 from collections import Counter
 
+import json
 import random
 import sys
 
-QUOTE = "Whenever I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral principle to prevent me from deliberately stepping into the street, and methodically knocking people’s hats off—then, I account it high time to get to sea as soon as I can."
+# QUOTE = "Whenever I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral principle to prevent me from deliberately stepping into the street, and methodically knocking people’s hats off—then, I account it high time to get to sea as soon as I can."
+#
+# AUTHOR = 'Herman Melville'
+# WORK = 'Moby Dick'
+#
 
-AUTHOR = 'Herman Melville'
-WORK = 'Moby Dick'
+with open('prepared-quotes.json', 'r') as f:
+    quotes = json.load(f)
 
-FREQ_ALPH = 'qjxzwkvfybhmpgudclotnrsaie'
+q = quotes[4]
+
+QUOTE = q['quote']
+AUTHOR = q['author']
+WORK = q['work']
+
+scrabble_score = {"a": 1 , "b": 3 , "c": 3 , "d": 2 ,
+         "e": 1 , "f": 4 , "g": 2 , "h": 4 ,
+         "i": 1 , "j": 8 , "k": 5 , "l": 1 ,
+         "m": 3 , "n": 1 , "o": 1 , "p": 3 ,
+         "q": 10, "r": 1 , "s": 1 , "t": 1 ,
+         "u": 1 , "v": 4 , "w": 4 , "x": 8 ,
+         "y": 4 , "z": 10}
+
+
+def get_scrabble_score(word):
+    total = 0
+    for l in word.lower():
+        total += scrabble_score.get(l, 0)
+    return total
 
 def normalize_text(text):
     return ''.join([l for l in text.lower() if l.isalpha()])
@@ -49,19 +73,28 @@ def main():
     author = normalize_text(AUTHOR)
     work = normalize_text(WORK)
 
-    if not (p.is_substring(author) and p.is_substring(work)):
-        sys.exit('Passage does not contain anagrams for {} and {}.'.format(author, work))
+    attribution = author + work
+    att_count = Counter(attribution)
+
+    avg_word_length = len(p.normalized_text)/len(attribution)
+
+    if not (p.is_substring(attribution)):
+        sys.exit('Passage does not contain anagrams for both {} and {}.'.
+                  format(author, work))
 
     with open('prepared-dict.txt') as f:
         words = [word.strip() for word in f.readlines()]
 
-    words = sorted(words, key=lambda word: [FREQ_ALPH.find(l) for l in word])
-    shuffled_words = []
+    words = sorted(words, key=get_scrabble_score, reverse=True)
 
-    for x in range(0, len(words), int(len(words)/10)):
-        decile = words[x:x+int(len(words)/10)]
-        random.shuffle(decile)
-        shuffled_words.extend(decile)
+    length_sorted_words = sorted(words,
+                                 key=lambda word: abs(avg_word_length - len(word)))
+
+    shuffled_words = []
+    for x in range(0, len(words), int(len(words)/5)):
+        quintile = length_sorted_words[x:x+int(len(words)/5)]
+        random.shuffle(quintile)
+        shuffled_words.extend(quintile)
 
     possible_subs = shuffled_words
 
@@ -71,24 +104,33 @@ def main():
         print('Finding an acrostic for the passage:', end='\n\n')
         print(p.display, end='\n\n')
         print('from {} by {}.'.format(WORK, AUTHOR), end='\n\n')
+        print('Need {} words each an average of {:.3} letters.'.
+               format(len(attribution), avg_word_length), end='\n\n')
 
     for sub in possible_subs:
-        if p.is_substring(sub):
+        if sub[0] in +att_count and p.is_substring(sub[1:] + ''.join(att_count.elements())):
             p.proc_substring(sub)
             subs.append(sub)
-        else:
-            pass
-            # #print(sub, 'is not a substring')
+            att_count.subtract(sub[0])
 
     remaining = normalize_text(p.display)
 
     if DISPLAY:
-        print('You may remove the anagrammed substrings:', end='\n\n')
+        print('Found {} anagrammed substrings with average length of {:.3} letters:'.
+               format(len(subs), sum(map(len, subs))/len(subs)))
         print(subs, end='\n\n')
-        print('With {} letters remaining:'.format(len(remaining)), end='\n\n')
+        print('With {} letters remaining:'.format(len(remaining)))
         print(remaining)
 
-    return remaining, subs
+    else:
+        print('{}/{}'.format(len(subs), len(attribution)), '({})'.format(
+              ''.join([l for l in att_count.elements()])),
+              len(remaining), remaining)
+
+    if len(remaining) == 0 and len(subs) == len(attribution):
+        return True
+    else:
+        return False
 
 if __name__ == '__main__':
     flags = sys.argv[1:]
@@ -103,11 +145,11 @@ if __name__ == '__main__':
         DISPLAY = False
 
     if RUN:
-        remaining = 1
         attempts = 1
-        while remaining:
-            remaining, subs = main()
-            print(attempts, len(remaining), remaining)
+        solved = False
+        while not solved:
+            print(attempts, end=': ')
+            solved = main()
             attempts += 1
 
         print(subs)
