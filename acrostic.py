@@ -128,6 +128,7 @@ def main():
               len(remaining), remaining)
 
     if len(remaining) == 0 and len(subs) == len(attribution):
+        print(subs)
         return True
     else:
         return False
@@ -151,8 +152,6 @@ if __name__ == '__main__':
             print(attempts, end=': ')
             solved = main()
             attempts += 1
-
-        print(subs)
 
     else:
         main()
