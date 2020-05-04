@@ -10,14 +10,21 @@ import sys
 # WORK = 'Moby Dick'
 #
 
+
 with open('prepared-quotes.json', 'r') as f:
     quotes = json.load(f)
 
-q = quotes[4]
+q = quotes[61]
 
 QUOTE = q['quote']
 AUTHOR = q['author']
 WORK = q['work']
+
+QUOTE = "A relatively major outpouring—somewhere in fifty miles—about once every decade? Mountain time and city time appear to be bifocal. Even with a geology functioning at such remarkably short intervals, the people have ample time to forget it."
+
+AUTHOR = "John McPhee"
+WORK = "Control of Nature"
+
 
 scrabble_score = {"a": 1 , "b": 3 , "c": 3 , "d": 2 ,
          "e": 1 , "f": 4 , "g": 2 , "h": 4 ,
@@ -88,13 +95,23 @@ def main():
     words = sorted(words, key=get_scrabble_score, reverse=True)
 
     length_sorted_words = sorted(words,
-                                 key=lambda word: abs(avg_word_length - len(word)))
+                                 key=lambda word: abs(avg_word_length + .75 - len(word)))
+
+    # At this point the words are primarily in length order, with a second sort key on 
+    # Scrabble score. The length order goes in both directions away from the desired
+    # average word length.
+
+    # The constant there is a magic number... I've had to take it up or down a bit
+    # based on experimentation
 
     shuffled_words = []
-    for x in range(0, len(words), int(len(words)/5)):
-        quintile = length_sorted_words[x:x+int(len(words)/5)]
+    for x in range(0, len(words), int(len(words)/10)):
+        quintile = length_sorted_words[x:x+int(len(words)/10)]
         random.shuffle(quintile)
         shuffled_words.extend(quintile)
+
+    # Now the words are split up into segments, each segment is shuffled, and they're
+    # reassembled.
 
     possible_subs = shuffled_words
 
@@ -128,7 +145,12 @@ def main():
               len(remaining), remaining)
 
     if len(remaining) == 0 and len(subs) == len(attribution):
-        print(subs)
+        ordered_subs = []
+        for letter in attribution:
+            word = next((word for word in subs if word.startwith(letter)))
+            ordered_subs.append(word)
+            subs.remove(word)
+        print(ordered_subs)
         return True
     else:
         return False
