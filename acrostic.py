@@ -147,7 +147,7 @@ def main():
     if len(remaining) == 0 and len(subs) == len(attribution):
         ordered_subs = []
         for letter in attribution:
-            word = next((word for word in subs if word.startwith(letter)))
+            word = next((word for word in subs if word.startswith(letter)))
             ordered_subs.append(word)
             subs.remove(word)
         print(ordered_subs)
