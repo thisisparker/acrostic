@@ -1,8 +1,9 @@
-from collections import Counter
-
+import argparse
 import json
 import random
 import sys
+
+from collections import Counter
 
 # QUOTE = "Whenever I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral principle to prevent me from deliberately stepping into the street, and methodically knocking people’s hats off—then, I account it high time to get to sea as soon as I can."
 #
@@ -27,13 +28,12 @@ WORK = "Control of Nature"
 
 
 scrabble_score = {"a": 1 , "b": 3 , "c": 3 , "d": 2 ,
-         "e": 1 , "f": 4 , "g": 2 , "h": 4 ,
-         "i": 1 , "j": 8 , "k": 5 , "l": 1 ,
-         "m": 3 , "n": 1 , "o": 1 , "p": 3 ,
-         "q": 10, "r": 1 , "s": 1 , "t": 1 ,
-         "u": 1 , "v": 4 , "w": 4 , "x": 8 ,
-         "y": 4 , "z": 10}
-
+                  "e": 1 , "f": 4 , "g": 2 , "h": 4 ,
+                  "i": 1 , "j": 8 , "k": 5 , "l": 1 ,
+                  "m": 3 , "n": 1 , "o": 1 , "p": 3 ,
+                  "q": 10, "r": 1 , "s": 1 , "t": 1 ,
+                  "u": 1 , "v": 4 , "w": 4 , "x": 8 ,
+                  "y": 4 , "z": 10}
 
 def get_scrabble_score(word):
     total = 0
@@ -132,10 +132,18 @@ def main():
 
     remaining = normalize_text(p.display)
 
+    unordered_subs = subs[:]
+    ordered_subs = []
+    for letter in attribution:
+        word = next((word for word in unordered_subs if word.startswith(letter)), '')
+        ordered_subs.append(word)
+        if word:
+            unordered_subs.remove(word)
+ 
     if DISPLAY:
         print('Found {} anagrammed substrings with average length of {:.3} letters:'.
                format(len(subs), sum(map(len, subs))/len(subs)))
-        print(subs, end='\n\n')
+        print(ordered_subs, end='\n\n')
         print('With {} letters remaining:'.format(len(remaining)))
         print(remaining)
 
@@ -145,33 +153,27 @@ def main():
               len(remaining), remaining)
 
     if len(remaining) == 0 and len(subs) == len(attribution):
-        ordered_subs = []
-        for letter in attribution:
-            word = next((word for word in subs if word.startswith(letter)))
-            ordered_subs.append(word)
-            subs.remove(word)
         print(ordered_subs)
         return True
     else:
         return False
 
 if __name__ == '__main__':
-    flags = sys.argv[1:]
+    parser = argparse.ArgumentParser()
 
-    RUN = False
-    DISPLAY = True
+    parser.add_argument('-k', '--keeprunning', action='store_true', )
+    parser.add_argument('-q', '--quiet', action='store_true')
 
-    if '--run' in flags:
-        RUN = True
+    args = parser.parse_args()
 
-    if '-q' in flags:
-        DISPLAY = False
+    RUN = args.keeprunning
+    DISPLAY = not args.quiet
 
     if RUN:
         attempts = 1
         solved = False
         while not solved:
-            print(attempts, end=': ')
+            print(f'{attempts:>4}', end=': ')
             solved = main()
             attempts += 1
 
