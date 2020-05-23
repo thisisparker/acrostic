@@ -154,21 +154,25 @@ def main():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-k', '--keeprunning', action='store_true', )
+    parser.add_argument('-l', '--loop',
+                        nargs='?',      # takes one or zero arguments
+                        const=0,        # uses const if flag is present but with no argument
+                        default=1,      # uses default if flag is not present at all
+                        type=int)
     parser.add_argument('-q', '--quiet', action='store_true')
 
     args = parser.parse_args()
 
-    RUN = args.keeprunning
+    loopcount = args.loop
     DISPLAY = not args.quiet
 
-    if RUN:
-        attempts = 1
-        solved = False
-        while not solved:
-            print(f'{attempts:>4}', end=': ')
-            solved = main()
-            attempts += 1
+    attempts = 1
+    solved = False
 
-    else:
-        main()
+    run_condition = 'attempts <= loopcount and not solved' if loopcount else \
+                    'not solved'
+
+    while eval(run_condition):
+        print(f'{attempts:>4}', end=': ')
+        solved = main()
+        attempts += 1
