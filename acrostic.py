@@ -5,31 +5,21 @@ import sys
 
 from collections import Counter
 
-with open('prepared-quotes.json', 'r') as f:
-    quotes = json.load(f)
-
-q = quotes[61]
-
-QUOTE = q['quote']
-AUTHOR = q['author']
-WORK = q['work']
-
 QUOTE = "A relatively major outpouring—somewhere in fifty miles—about once every decade? Mountain time and city time appear to be bifocal. Even with a geology functioning at such remarkably short intervals, the people have ample time to forget it."
 
 AUTHOR = "John McPhee"
 WORK = "Control of Nature"
 
-
-scrabble_score = {"a": 1 , "b": 3 , "c": 3 , "d": 2 ,
-                  "e": 1 , "f": 4 , "g": 2 , "h": 4 ,
-                  "i": 1 , "j": 8 , "k": 5 , "l": 1 ,
-                  "m": 3 , "n": 1 , "o": 1 , "p": 3 ,
-                  "q": 10, "r": 1 , "s": 1 , "t": 1 ,
-                  "u": 1 , "v": 4 , "w": 4 , "x": 8 ,
-                  "y": 4 , "z": 10}
-
 def get_scrabble_score(word):
     total = 0
+    scrabble_score = {"a": 1 , "b": 3 , "c": 3 , "d": 2 ,
+                      "e": 1 , "f": 4 , "g": 2 , "h": 4 ,
+                      "i": 1 , "j": 8 , "k": 5 , "l": 1 ,
+                      "m": 3 , "n": 1 , "o": 1 , "p": 3 ,
+                      "q": 10, "r": 1 , "s": 1 , "t": 1 ,
+                      "u": 1 , "v": 4 , "w": 4 , "x": 8 ,
+                      "y": 4 , "z": 10}
+
     for l in word.lower():
         total += scrabble_score.get(l, 0)
     return total
@@ -67,7 +57,7 @@ class Passage():
             self.display = self.display[:idx] + '?' + self.display[idx + 1:]
 
 
-def main():
+def main(quiet=False):
     p = Passage(QUOTE)
 
     author = normalize_text(AUTHOR)
@@ -110,7 +100,7 @@ def main():
 
     subs = []
 
-    if DISPLAY:
+    if not quiet:
         print('Finding an acrostic for the passage:', end='\n\n')
         print(p.display, end='\n\n')
         print('from {} by {}.'.format(WORK, AUTHOR), end='\n\n')
@@ -133,7 +123,7 @@ def main():
         if word:
             unordered_subs.remove(word)
  
-    if DISPLAY:
+    if not quiet:
         print('Found {} anagrammed substrings with average length of {:.3} letters:'.
                format(len(subs), sum(map(len, subs))/len(subs)))
         print(ordered_subs, end='\n\n')
@@ -164,15 +154,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     loopcount = args.loop
-    DISPLAY = not args.quiet
+    quiet = args.quiet
 
     attempts = 1
     solved = False
 
-    run_condition = 'attempts <= loopcount and not solved' if loopcount else \
-                    'not solved'
-
-    while eval(run_condition):
+    while not solved and (not loopcount or attempts <= loopcount):
         print(f'{attempts:>4}', end=': ')
-        solved = main()
+        solved = main(quiet=quiet)
         attempts += 1
