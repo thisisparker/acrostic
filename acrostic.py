@@ -28,12 +28,25 @@ def normalize_text(text):
     return ''.join([l for l in text.lower() if l.isalpha()])
 
 class Passage():
-    def __init__(self, text):
+    def __init__(self, text, work, author):
         self.text = text
         self.normalized_text = normalize_text(self.text)
         self.count = Counter(self.normalized_text)
 
+        self.work = work
+        self.author = author
+
+        self.attribution = normalize_text(self.work + self.author)
+        self.att_count = Counter(self.attribution)
+
         self.display = self.text
+
+        self.avg_word_length = len(self.normalized_text)/len(self.attribution)
+
+    def reset(self):
+        self.display = self.text
+        self.count = Counter(self.normalized_text)
+        self.att_count = Counter(self.attribution)
 
     def is_substring(self, sub):
         check = self.count.copy()
@@ -56,40 +69,23 @@ class Passage():
             idx = self.display.lower().index(letter)
             self.display = self.display[:idx] + '?' + self.display[idx + 1:]
 
-
-def main(quiet=False):
-    p = Passage(QUOTE)
-
-    author = normalize_text(AUTHOR)
-    work = normalize_text(WORK)
-
-    attribution = author + work
-    att_count = Counter(attribution)
-
-    avg_word_length = len(p.normalized_text)/len(attribution)
-
-    if not (p.is_substring(attribution)):
-        sys.exit('Passage does not contain anagrams for both {} and {}.'.
-                  format(author, work))
-
-    with open('prepared-dict.txt') as f:
-        words = [word.strip() for word in f.readlines()]
-
+def deterministic_sort(words, p):
     words = sorted(words, key=get_scrabble_score, reverse=True)
+    words = sorted(words, key=lambda word: abs(p.avg_word_length + .75 - len(word)))
 
-    length_sorted_words = sorted(words,
-                                 key=lambda word: abs(avg_word_length + .75 - len(word)))
-
-    # At this point the words are primarily in length order, with a second sort key on 
-    # Scrabble score. The length order goes in both directions away from the desired
+    # at this point the words are primarily in length order, with a second sort key on 
+    # scrabble score. the length order goes in both directions away from the desired
     # average word length.
 
-    # The constant there is a magic number... I've had to take it up or down a bit
+    # the constant there is a magic number... i've had to take it up or down a bit
     # based on experimentation
 
+    return words
+
+def run_dictionary(words, p):
     shuffled_words = []
     for x in range(0, len(words), int(len(words)/10)):
-        quintile = length_sorted_words[x:x+int(len(words)/10)]
+        quintile = words[x:x+int(len(words)/10)]
         random.shuffle(quintile)
         shuffled_words.extend(quintile)
 
@@ -100,46 +96,73 @@ def main(quiet=False):
 
     subs = []
 
-    if not quiet:
-        print('Finding an acrostic for the passage:', end='\n\n')
-        print(p.display, end='\n\n')
-        print('from {} by {}.'.format(WORK, AUTHOR), end='\n\n')
-        print('Need {} words each an average of {:.3} letters.'.
-               format(len(attribution), avg_word_length), end='\n\n')
-
     for sub in possible_subs:
-        if sub[0] in +att_count and p.is_substring(sub[1:] + ''.join(att_count.elements())):
+        if sub[0] in +p.att_count and p.is_substring(sub[1:] +  
+                ''.join(p.att_count.elements())):
             p.proc_substring(sub)
             subs.append(sub)
-            att_count.subtract(sub[0])
+            p.att_count.subtract(sub[0])
 
     remaining = normalize_text(p.display)
 
-    unordered_subs = subs[:]
-    ordered_subs = []
-    for letter in attribution:
-        word = next((word for word in unordered_subs if word.startswith(letter)), '')
-        ordered_subs.append(word)
-        if word:
-            unordered_subs.remove(word)
+    return subs, remaining
+
+def main(loopcount=1, quiet=False):
+    p = Passage(QUOTE, WORK, AUTHOR)
+
+    if not (p.is_substring(p.attribution)):
+        sys.exit('Passage does not contain anagrams for both {} and {}.'.
+                  format(author, work))
+
+    with open('prepared-dict.txt') as f:
+        words = [word.strip() for word in f.readlines()]
+
+    words = deterministic_sort(words, p)
+
+    # At this point the words are in a single "standard" order, with the shuffling
+    # happening during each dictionary run.
+
+
+    print('Finding an acrostic for the passage:', end='\n\n')
+    print(p.display, end='\n\n')
+    print('from {} by {}.'.format(p.work, p.author), end='\n\n')
+    print('need {} words each an average of {:.3} letters.'.
+           format(len(p.attribution), p.avg_word_length), end='\n\n')
+
+    attempts = 1
+    solved = False
+
+    while not solved and (not loopcount or attempts <= loopcount):
+        print(f'{attempts:>4}', end=': ')
+        subs, remaining  = run_dictionary(words, p)
+
+        if len(remaining) == 0 and len(subs) == len(p.attribution):
+            solved = True
  
-    if not quiet:
-        print('Found {} anagrammed substrings with average length of {:.3} letters:'.
-               format(len(subs), sum(map(len, subs))/len(subs)))
-        print(ordered_subs, end='\n\n')
-        print('With {} letters remaining:'.format(len(remaining)))
-        print(remaining)
+        unordered_subs = subs[:]
+        ordered_subs = []
+        for letter in p.attribution:
+            word = next((word for word in unordered_subs if word.startswith(letter)), '')
+            ordered_subs.append(word)
+            if word:
+                unordered_subs.remove(word)
 
-    else:
-        print('{}/{}'.format(len(subs), len(attribution)), '({})'.format(
-              ''.join([l for l in att_count.elements()])),
-              len(remaining), remaining)
+        if quiet:
+            print('{}/{}'.format(len(subs), len(p.attribution)), '({})'.format(
+                  ''.join([l for l in p.att_count.elements()])),
+                  len(remaining), remaining)
+        else:
+            print('Found {} anagrammed substrings with average length of {:.3} letters:'.
+                   format(len(subs), sum(map(len, subs))/len(subs)))
+            print(ordered_subs, end='\n\n')
+            print('With {} letters remaining:'.format(len(remaining)))
+            print(remaining)
 
-    if len(remaining) == 0 and len(subs) == len(attribution):
-        print(ordered_subs)
-        return True
-    else:
-        return False
+        p.reset()
+        attempts += 1
+
+    if solved and quiet:
+        print('yay!', ordered_subs)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -153,13 +176,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    loopcount = args.loop
-    quiet = args.quiet
-
-    attempts = 1
-    solved = False
-
-    while not solved and (not loopcount or attempts <= loopcount):
-        print(f'{attempts:>4}', end=': ')
-        solved = main(quiet=quiet)
-        attempts += 1
+    main(loopcount=args.loop, quiet=args.quiet)
