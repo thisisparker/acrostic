@@ -82,15 +82,20 @@ def deterministic_sort(words, p):
 
     return words
 
-def run_dictionary(words, p):
+def shuffle_sort(words, segment_count=10):
     shuffled_words = []
-    for x in range(0, len(words), int(len(words)/10)):
-        quintile = words[x:x+int(len(words)/10)]
+    for x in range(0, len(words), int(len(words)/segment_count)):
+        quintile = words[x:x+int(len(words)/segment_count)]
         random.shuffle(quintile)
         shuffled_words.extend(quintile)
 
     # Now the words are split up into segments, each segment is shuffled, and they're
     # reassembled.
+
+    return shuffled_words
+
+def run_dictionary(words, p):
+    shuffled_words = shuffle_sort(words)
 
     possible_subs = shuffled_words
 
@@ -120,8 +125,7 @@ def main(loopcount=1, quiet=False):
     words = deterministic_sort(words, p)
 
     # At this point the words are in a single "standard" order, with the shuffling
-    # happening during each dictionary run.
-
+    # happening before each dictionary run.
 
     print('Finding an acrostic for the passage:', end='\n\n')
     print(p.display, end='\n\n')
@@ -155,14 +159,14 @@ def main(loopcount=1, quiet=False):
             print('Found {} anagrammed substrings with average length of {:.3} letters:'.
                    format(len(subs), sum(map(len, subs))/len(subs)))
             print(ordered_subs, end='\n\n')
-            print('With {} letters remaining:'.format(len(remaining)))
-            print(remaining)
+            print('With {} letters remaining:'.format(len(remaining)), remaining, end='\n\n')
 
         p.reset()
         attempts += 1
 
-    if solved and quiet:
-        print('yay!', ordered_subs)
+    if solved:
+        print(p.display, end='\n\n')
+        print(ordered_subs)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
