@@ -38,6 +38,8 @@ roadflare
 eggy
 ```
 
+(The words are only as good as the wordlist that you start with! These aren't great.)
+
 It works in a very brute force manner: after shuffling the entire list of words, it proceeds from front to back selecting words that are made entirely of as-yet-unused letters. Each "loop" constitutes a single run through the entire shuffled dictionary.
 
 By default the script will output the results of a single attempt whether or not it found a solution. To run multiple loops, you can use the `--loop` (or `-l`) flag with an integer argument. Omit the integer to run until you hit a solution.
