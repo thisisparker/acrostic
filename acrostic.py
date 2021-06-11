@@ -71,14 +71,11 @@ class Passage():
 
 def deterministic_sort(words, p):
     words = sorted(words, key=get_scrabble_score, reverse=True)
-    words = sorted(words, key=lambda word: abs(p.avg_word_length + .75 - len(word)))
+    words = sorted(words, key=lambda word: abs(p.avg_word_length - len(word)))
 
     # at this point the words are primarily in length order, with a second sort key on 
     # scrabble score. the length order goes in both directions away from the desired
     # average word length.
-
-    # the constant there is a magic number... i've had to take it up or down a bit
-    # based on experimentation
 
     return words
 
@@ -112,17 +109,34 @@ def run_dictionary(words, p):
 
     return subs, remaining
 
+def find_spots(subs, letters):
+    for idx, s in enumerate(subs):
+        for l in letters:
+            if sorted(s+l) in sorted_letter_words:
+                options = [w for w in words if sorted(w) == sorted(s+l) and w[0] == s[0]]
+                if options:
+                    subs[idx] = random.choice(options)
+                    letters = letters.replace(l, '', 1)
+                    print('\nreplacing', s, 'with', subs[idx], end='')
+                    return find_spots(subs, letters)
+
+    return subs, letters
+
+
 def main(loopcount=1, quiet=False):
     p = Passage(QUOTE, WORK, AUTHOR)
+    global words
+    global sorted_letter_words
 
     if not (p.is_substring(p.attribution)):
         sys.exit('Passage does not contain anagrams for both {} and {}.'.
                   format(author, work))
 
     with open('prepared-dict.txt') as f:
-        words = [word.strip() for word in f.readlines()]
+        words = [word.strip() for word in f.readlines() if word.strip()]
 
     words = deterministic_sort(words, p)
+    sorted_letter_words = [sorted(w) for w in words]
 
     # At this point the words are in a single "standard" order, with the shuffling
     # happening before each dictionary run.
@@ -137,12 +151,19 @@ def main(loopcount=1, quiet=False):
     solved = False
 
     while not solved and (not loopcount or attempts <= loopcount):
-        print(f'{attempts:>4}', end=': ')
         subs, remaining  = run_dictionary(words, p)
+
+
+        if len(subs) == len(p.attribution) and remaining:
+            print('drilling down on {}...'.format(remaining), end='')
+            subs, remaining = find_spots(subs, remaining)
+            print('\n')
 
         if len(remaining) == 0 and len(subs) == len(p.attribution):
             solved = True
  
+        print(f'{attempts:>4}', end=': ')
+
         unordered_subs = subs[:]
         ordered_subs = []
         for letter in p.attribution:
@@ -151,20 +172,22 @@ def main(loopcount=1, quiet=False):
             if word:
                 unordered_subs.remove(word)
 
-        if quiet:
+        if quiet and not solved:
             print('{}/{}'.format(len(subs), len(p.attribution)), '({})'.format(
                   ''.join([l for l in p.att_count.elements()])),
                   len(remaining), remaining)
-        else:
+        elif not solved:
             print('Found {} anagrammed substrings with average length of {:.3} letters:'.
                    format(len(subs), sum(map(len, subs))/len(subs)))
             print(ordered_subs, end='\n\n')
-            print('With {} letters remaining:'.format(len(remaining)), remaining, end='\n\n')
+            if not solved:
+                print('With {} letters remaining:'.format(len(remaining)), remaining, end='\n\n')
 
         p.reset()
         attempts += 1
 
     if solved:
+        print('solution found!\n')
         print(p.display, end='\n\n')
         print(ordered_subs)
 
