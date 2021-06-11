@@ -10,6 +10,11 @@ QUOTE = "A relatively major outpouring—somewhere in fifty miles—about once e
 AUTHOR = "John McPhee"
 WORK = "Control of Nature"
 
+QUOTE = "As a child I had a tiger dream. ... [I]t was always the same. ... [A] tiger at the foot of my bed... sits on his haunches, sharpening his claws on my bedposts. ... [T]hen he... springs through the air... [J]ust before he lands on top of me, I wake up."
+
+AUTHOR = "Morris"
+WORK = "All the Way to the Tigers"
+
 def get_scrabble_score(word):
     total = 0
     scrabble_score = {"a": 1 , "b": 3 , "c": 3 , "d": 2 ,
